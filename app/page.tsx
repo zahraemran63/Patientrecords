@@ -195,15 +195,17 @@ export default function HomePage() {
               </div>
             </div>
 
-<Link
-  href="/patient/new"
-  prefetch={false}
-  className="relative z-50 flex h-11 shrink-0 cursor-pointer items-center gap-2 rounded-2xl bg-teal-600 px-4 text-sm font-semibold text-white shadow-lg shadow-teal-600/20 transition hover:bg-teal-700 active:scale-[0.98]"
+<button
+  type="button"
+  onClick={() => {
+    window.location.href = "/patient/new";
+  }}
+  className="relative z-[9999] flex h-11 shrink-0 cursor-pointer items-center gap-2 rounded-2xl bg-teal-600 px-4 text-sm font-semibold text-white shadow-lg shadow-teal-600/20 transition hover:bg-teal-700 active:scale-[0.98]"
 >
   <PlusIcon />
   <span className="hidden sm:inline">Add Patient</span>
   <span className="sm:hidden">Add</span>
-</Link>
+</button>
 
   
           </div>
