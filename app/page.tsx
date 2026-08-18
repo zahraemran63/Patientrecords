@@ -195,15 +195,15 @@ export default function HomePage() {
               </div>
             </div>
 
-            <button
-              type="button"
-              className="flex h-11 shrink-0 items-center gap-2 rounded-2xl bg-teal-600 px-4 text-sm font-semibold text-white shadow-lg shadow-teal-600/20 transition hover:bg-teal-700 active:scale-[0.98]"
-            >
-              <PlusIcon />
+            <Link
+  href="/patient/new"
+  className="flex h-11 shrink-0 items-center gap-2 rounded-2xl bg-teal-600 px-4 text-sm font-semibold text-white shadow-lg shadow-teal-600/20 transition hover:bg-teal-700 active:scale-[0.98]"
+>
+  <PlusIcon />
+  <span className="hidden sm:inline">Add Patient</span>
+  <span className="sm:hidden">Add</span>
+</Link>
 
-              <span className="hidden sm:inline">Add Patient</span>
-              <span className="sm:hidden">Add</span>
-            </button>
           </div>
 
           <p className="mt-4 max-w-xl text-sm leading-6 text-slate-500">
