@@ -10,7 +10,6 @@ type Patient = {
   dateOfBirth: string;
   nationalId: string;
   phone: string;
-  status: "Active" | "Follow-up";
 };
 
 const demoPatients: Patient[] = [
@@ -21,7 +20,6 @@ const demoPatients: Patient[] = [
     dateOfBirth: "12 Mar 1988",
     nationalId: "1098765432",
     phone: "+966 50 123 4567",
-    status: "Active",
   },
   {
     id: "demo-1002",
@@ -30,7 +28,6 @@ const demoPatients: Patient[] = [
     dateOfBirth: "05 Jul 1979",
     nationalId: "1076543210",
     phone: "+966 55 987 6543",
-    status: "Follow-up",
   },
 ];
 
@@ -191,6 +188,7 @@ export default function HomePage() {
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-teal-600">
                   Clinic
                 </p>
+
                 <h1 className="truncate text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
                   Patient Care
                 </h1>
@@ -202,6 +200,7 @@ export default function HomePage() {
               className="flex h-11 shrink-0 items-center gap-2 rounded-2xl bg-teal-600 px-4 text-sm font-semibold text-white shadow-lg shadow-teal-600/20 transition hover:bg-teal-700 active:scale-[0.98]"
             >
               <PlusIcon />
+
               <span className="hidden sm:inline">Add Patient</span>
               <span className="sm:hidden">Add</span>
             </button>
@@ -221,6 +220,7 @@ export default function HomePage() {
                 <p className="text-xs font-medium text-slate-500">
                   Total Patients
                 </p>
+
                 <p className="mt-1 text-2xl font-bold text-slate-900">
                   {demoPatients.length}
                 </p>
@@ -236,10 +236,11 @@ export default function HomePage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs font-medium text-slate-500">
-                  Active Cases
+                  Patient Records
                 </p>
+
                 <p className="mt-1 text-2xl font-bold text-slate-900">
-                  {demoPatients.filter((p) => p.status === "Active").length}
+                  {demoPatients.length}
                 </p>
               </div>
 
@@ -271,6 +272,7 @@ export default function HomePage() {
         <div className="mb-3 flex items-center justify-between">
           <div>
             <h2 className="text-lg font-bold text-slate-900">Patients</h2>
+
             <p className="mt-0.5 text-xs text-slate-500">
               {filteredPatients.length} patient
               {filteredPatients.length !== 1 ? "s" : ""} found
@@ -285,34 +287,21 @@ export default function HomePage() {
               key={patient.id}
               className="overflow-hidden rounded-[28px] border border-slate-100 bg-white shadow-[0_8px_30px_rgba(15,118,110,0.07)] transition hover:-translate-y-0.5 hover:shadow-[0_12px_35px_rgba(15,118,110,0.11)]"
             >
-              {/* Card top */}
               <div className="p-5 sm:p-6">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex min-w-0 items-center gap-3">
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-50 to-cyan-50 text-teal-700">
-                      <UserIcon />
-                    </div>
-
-                    <div className="min-w-0">
-                      <p className="text-[11px] font-bold uppercase tracking-wider text-teal-600">
-                        File #{patient.fileNumber}
-                      </p>
-
-                      <h3 className="mt-0.5 truncate text-lg font-bold text-slate-900">
-                        {patient.name}
-                      </h3>
-                    </div>
+                <div className="flex items-start gap-4">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-50 to-cyan-50 text-teal-700">
+                    <UserIcon />
                   </div>
 
-                  <span
-                    className={`shrink-0 rounded-full px-3 py-1 text-[11px] font-semibold ${
-                      patient.status === "Active"
-                        ? "bg-emerald-50 text-emerald-700"
-                        : "bg-amber-50 text-amber-700"
-                    }`}
-                  >
-                    {patient.status}
-                  </span>
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-teal-600">
+                      File #{patient.fileNumber}
+                    </p>
+
+                    <h3 className="mt-0.5 truncate text-lg font-bold text-slate-900">
+                      {patient.name}
+                    </h3>
+                  </div>
                 </div>
 
                 {/* Patient basic information */}
@@ -320,6 +309,7 @@ export default function HomePage() {
                   <div className="rounded-2xl bg-slate-50 p-3">
                     <div className="flex items-center gap-2 text-slate-400">
                       <CalendarIcon />
+
                       <span className="text-[11px] font-medium uppercase tracking-wide">
                         Date of Birth
                       </span>
@@ -333,6 +323,7 @@ export default function HomePage() {
                   <div className="rounded-2xl bg-slate-50 p-3">
                     <div className="flex items-center gap-2 text-slate-400">
                       <IdIcon />
+
                       <span className="text-[11px] font-medium uppercase tracking-wide">
                         National ID
                       </span>
