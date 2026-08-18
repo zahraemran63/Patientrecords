@@ -1,35 +1,20 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { supabase } from "./lib/supabase";
 
 type Patient = {
   id: string;
-  fileNumber: string;
-  name: string;
-  dateOfBirth: string;
-  nationalId: string;
-  phone: string;
+  file_number: string | null;
+  name: string | null;
+  date_of_birth: string | null;
+  national_id: string | null;
+  phone: string | null;
+  height: number | null;
+  weight: number | null;
+  created_at: string | null;
 };
-
-const demoPatients: Patient[] = [
-  {
-    id: "demo-1001",
-    fileNumber: "P-1001",
-    name: "Sarah Ahmed",
-    dateOfBirth: "12 Mar 1988",
-    nationalId: "1098765432",
-    phone: "+966 50 123 4567",
-  },
-  {
-    id: "demo-1002",
-    fileNumber: "P-1002",
-    name: "Mohammed Ali",
-    dateOfBirth: "05 Jul 1979",
-    nationalId: "1076543210",
-    phone: "+966 55 987 6543",
-  },
-];
 
 function SearchIcon() {
   return (
@@ -153,23 +138,55 @@ function ActivityIcon() {
 
 export default function HomePage() {
   const [search, setSearch] = useState("");
+  const [patients, setPatients] = useState<Patient[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  async function loadPatients() {
+    setLoading(true);
+    setError("");
+
+    const { data, error } = await supabase
+      .from("clinic_patients")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error(error);
+      setError(error.message);
+      setPatients([]);
+    } else {
+      setPatients(data || []);
+    }
+
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    loadPatients();
+  }, []);
 
   const filteredPatients = useMemo(() => {
     const value = search.toLowerCase().trim();
 
-    if (!value) return demoPatients;
+    if (!value) return patients;
 
-    return demoPatients.filter(
-      (patient) =>
-        patient.name.toLowerCase().includes(value) ||
-        patient.fileNumber.toLowerCase().includes(value) ||
-        patient.nationalId.includes(value)
-    );
-  }, [search]);
+    return patients.filter((patient) => {
+      const name = patient.name?.toLowerCase() || "";
+      const fileNumber = patient.file_number?.toLowerCase() || "";
+      const nationalId = patient.national_id || "";
+
+      return (
+        name.includes(value) ||
+        fileNumber.includes(value) ||
+        nationalId.includes(value)
+      );
+    });
+  }, [search, patients]);
 
   return (
     <main className="min-h-screen bg-[#f3f8f8] text-slate-800">
-      {/* Background decoration */}
+      {/* Background */}
       <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
         <div className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-teal-200/30 blur-3xl" />
         <div className="absolute -left-32 top-[45%] h-80 w-80 rounded-full bg-blue-200/20 blur-3xl" />
@@ -195,19 +212,20 @@ export default function HomePage() {
               </div>
             </div>
 
-<button
-  type="button"
-  onClick={() => {
-    window.location.href = "/patient/new";
-  }}
-  className="relative z-[9999] flex h-11 shrink-0 cursor-pointer items-center gap-2 rounded-2xl bg-teal-600 px-4 text-sm font-semibold text-white shadow-lg shadow-teal-600/20 transition hover:bg-teal-700 active:scale-[0.98]"
->
-  <PlusIcon />
-  <span className="hidden sm:inline">Add Patient</span>
-  <span className="sm:hidden">Add</span>
-</button>
+            <Link
+              href="/patient/new"
+              className="relative z-50 flex h-11 shrink-0 items-center gap-2 rounded-2xl bg-teal-600 px-4 text-sm font-semibold text-white shadow-lg shadow-teal-600/20 transition hover:bg-teal-700 active:scale-[0.98]"
+            >
+              <PlusIcon />
 
-  
+              <span className="hidden sm:inline">
+                Add Patient
+              </span>
+
+              <span className="sm:hidden">
+                Add
+              </span>
+            </Link>
           </div>
 
           <p className="mt-4 max-w-xl text-sm leading-6 text-slate-500">
@@ -216,7 +234,7 @@ export default function HomePage() {
           </p>
         </header>
 
-        {/* Quick Stats */}
+        {/* Stats */}
         <section className="mb-6 grid grid-cols-2 gap-3">
           <div className="rounded-3xl border border-white/80 bg-white/80 p-4 shadow-sm backdrop-blur">
             <div className="flex items-center justify-between">
@@ -226,7 +244,7 @@ export default function HomePage() {
                 </p>
 
                 <p className="mt-1 text-2xl font-bold text-slate-900">
-                  {demoPatients.length}
+                  {loading ? "..." : patients.length}
                 </p>
               </div>
 
@@ -244,7 +262,7 @@ export default function HomePage() {
                 </p>
 
                 <p className="mt-1 text-2xl font-bold text-slate-900">
-                  {demoPatients.length}
+                  {loading ? "..." : patients.length}
                 </p>
               </div>
 
@@ -272,10 +290,12 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* Section title */}
+        {/* Title */}
         <div className="mb-3 flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-bold text-slate-900">Patients</h2>
+            <h2 className="text-lg font-bold text-slate-900">
+              Patients
+            </h2>
 
             <p className="mt-0.5 text-xs text-slate-500">
               {filteredPatients.length} patient
@@ -284,99 +304,115 @@ export default function HomePage() {
           </div>
         </div>
 
+        {/* Error */}
+        {error && (
+          <div className="mb-4 rounded-2xl border border-red-100 bg-red-50 p-4 text-sm text-red-600">
+            <p className="font-semibold">
+              Could not load patients
+            </p>
+
+            <p className="mt-1">
+              {error}
+            </p>
+          </div>
+        )}
+
+        {/* Loading */}
+        {loading && (
+          <div className="rounded-[28px] border border-slate-100 bg-white p-10 text-center shadow-sm">
+            <p className="text-sm font-medium text-slate-500">
+              Loading patients...
+            </p>
+          </div>
+        )}
+
         {/* Patient Cards */}
-        <section className="space-y-4">
-          {filteredPatients.map((patient) => (
-            <article
-              key={patient.id}
-              className="overflow-hidden rounded-[28px] border border-slate-100 bg-white shadow-[0_8px_30px_rgba(15,118,110,0.07)] transition hover:-translate-y-0.5 hover:shadow-[0_12px_35px_rgba(15,118,110,0.11)]"
-            >
-              <div className="p-5 sm:p-6">
-                <div className="flex items-start gap-4">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-50 to-cyan-50 text-teal-700">
-                    <UserIcon />
+        {!loading && !error && (
+          <section className="space-y-4">
+            {filteredPatients.map((patient) => (
+              <article
+                key={patient.id}
+                className="overflow-hidden rounded-[28px] border border-slate-100 bg-white shadow-[0_8px_30px_rgba(15,118,110,0.07)] transition hover:-translate-y-0.5 hover:shadow-[0_12px_35px_rgba(15,118,110,0.11)]"
+              >
+                <div className="p-5 sm:p-6">
+                  <div className="flex items-start gap-4">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-50 to-cyan-50 text-teal-700">
+                      <UserIcon />
+                    </div>
+
+                    <div className="min-w-0">
+                      <p className="text-[11px] font-bold uppercase tracking-wider text-teal-600">
+                        File #{patient.file_number || "—"}
+                      </p>
+
+                      <h3 className="mt-0.5 truncate text-lg font-bold text-slate-900">
+                        {patient.name || "Unnamed Patient"}
+                      </h3>
+                    </div>
                   </div>
 
-                  <div className="min-w-0">
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-teal-600">
-                      File #{patient.fileNumber}
-                    </p>
+                  <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div className="rounded-2xl bg-slate-50 p-3">
+                      <div className="flex items-center gap-2 text-slate-400">
+                        <CalendarIcon />
 
-                    <h3 className="mt-0.5 truncate text-lg font-bold text-slate-900">
-                      {patient.name}
-                    </h3>
+                        <span className="text-[11px] font-medium uppercase tracking-wide">
+                          Date of Birth
+                        </span>
+                      </div>
+
+                      <p className="mt-1.5 text-sm font-semibold text-slate-800">
+                        {patient.date_of_birth || "—"}
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl bg-slate-50 p-3">
+                      <div className="flex items-center gap-2 text-slate-400">
+                        <IdIcon />
+
+                        <span className="text-[11px] font-medium uppercase tracking-wide">
+                          National ID
+                        </span>
+                      </div>
+
+                      <p className="mt-1.5 text-sm font-semibold text-slate-800">
+                        {patient.national_id || "—"}
+                      </p>
+                    </div>
                   </div>
                 </div>
 
-                {/* Patient basic information */}
-                <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <div className="rounded-2xl bg-slate-50 p-3">
-                    <div className="flex items-center gap-2 text-slate-400">
-                      <CalendarIcon />
-
-                      <span className="text-[11px] font-medium uppercase tracking-wide">
-                        Date of Birth
-                      </span>
-                    </div>
-
-                    <p className="mt-1.5 text-sm font-semibold text-slate-800">
-                      {patient.dateOfBirth}
-                    </p>
-                  </div>
-
-                  <div className="rounded-2xl bg-slate-50 p-3">
-                    <div className="flex items-center gap-2 text-slate-400">
-                      <IdIcon />
-
-                      <span className="text-[11px] font-medium uppercase tracking-wide">
-                        National ID
-                      </span>
-                    </div>
-
-                    <p className="mt-1.5 text-sm font-semibold text-slate-800">
-                      {patient.nationalId}
-                    </p>
-                  </div>
+                <div className="border-t border-slate-100 bg-slate-50/70 p-3">
+                  <Link
+                    href={`/patient/${patient.id}`}
+                    className="flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-teal-600 text-sm font-semibold text-white shadow-sm transition hover:bg-teal-700 active:scale-[0.99]"
+                  >
+                    View Patient
+                    <ArrowIcon />
+                  </Link>
                 </div>
+              </article>
+            ))}
+
+            {filteredPatients.length === 0 && (
+              <div className="rounded-[28px] border border-dashed border-slate-300 bg-white p-10 text-center">
+                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-400">
+                  <SearchIcon />
+                </div>
+
+                <h3 className="mt-4 text-base font-bold text-slate-800">
+                  No patients found
+                </h3>
+
+                <p className="mt-1 text-sm text-slate-500">
+                  {search
+                    ? "Try searching with another name, file number or ID."
+                    : "Add your first patient to get started."}
+                </p>
               </div>
-
-              {/* Card action */}
-              <div className="border-t border-slate-100 bg-slate-50/70 p-3">
-                <Link
-                  href={`/patient/${patient.id}`}
-                  className="flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-teal-600 text-sm font-semibold text-white shadow-sm transition hover:bg-teal-700 active:scale-[0.99]"
-                >
-                  View Patient
-                  <ArrowIcon />
-                </Link>
-              </div>
-            </article>
-          ))}
-
-          {/* Empty search state */}
-          {filteredPatients.length === 0 && (
-            <div className="rounded-[28px] border border-dashed border-slate-300 bg-white p-10 text-center">
-              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-400">
-                <SearchIcon />
-              </div>
-
-              <h3 className="mt-4 text-base font-bold text-slate-800">
-                No patients found
-              </h3>
-
-              <p className="mt-1 text-sm text-slate-500">
-                Try searching with another name, file number or ID.
-              </p>
-            </div>
-          )}
-        </section>
-
-        {/* Footer */}
-        <footer className="mt-8 pb-2 text-center">
-          <p className="text-[11px] font-medium text-slate-400">
-            Patient Care • Clinical Management
-          </p>
-        </footer>
+            )}
+          </section>
+        )}
       </div>
     </main>
   );
