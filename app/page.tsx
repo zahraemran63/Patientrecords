@@ -170,7 +170,7 @@ export default function HomePage() {
   return (
     <main className="min-h-screen bg-[#f3f8f8] text-slate-800">
       {/* Background decoration */}
-      <div className="pointer-events-none fixed inset-0 -z-0 overflow-hidden">
+      <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
         <div className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-teal-200/30 blur-3xl" />
         <div className="absolute -left-32 top-[45%] h-80 w-80 rounded-full bg-blue-200/20 blur-3xl" />
       </div>
@@ -195,15 +195,17 @@ export default function HomePage() {
               </div>
             </div>
 
-            <Link
+<Link
   href="/patient/new"
-  className="flex h-11 shrink-0 items-center gap-2 rounded-2xl bg-teal-600 px-4 text-sm font-semibold text-white shadow-lg shadow-teal-600/20 transition hover:bg-teal-700 active:scale-[0.98]"
+  prefetch={false}
+  className="relative z-50 flex h-11 shrink-0 cursor-pointer items-center gap-2 rounded-2xl bg-teal-600 px-4 text-sm font-semibold text-white shadow-lg shadow-teal-600/20 transition hover:bg-teal-700 active:scale-[0.98]"
 >
   <PlusIcon />
   <span className="hidden sm:inline">Add Patient</span>
   <span className="sm:hidden">Add</span>
 </Link>
 
+  
           </div>
 
           <p className="mt-4 max-w-xl text-sm leading-6 text-slate-500">
