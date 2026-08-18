@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { supabase } from "../../lib/supabase";
+import { supabase } from "@/lib/supabase";
 
 type Tab =
   | "progress"
@@ -25,45 +25,53 @@ type Patient = {
 
 type Note = {
   id: string;
-  note: string;
+  patient_id: string;
+  note: string | null;
   created_at: string;
 };
 
 type Vital = {
   id: string;
-  temperature: number | null;
+  patient_id: string;
+  recorded_at: string;
+  temperature_c: number | null;
   systolic_bp: number | null;
   diastolic_bp: number | null;
-  heart_rate: number | null;
-  oxygen_saturation: number | null;
+  heart_rate_bpm: number | null;
+  oxygen_sat_percent: number | null;
   respiratory_rate: number | null;
-  weight: number | null;
-  created_at: string;
+  weight_kg: number | null;
+  notes: string | null;
 };
 
 type Procedure = {
   id: string;
+  patient_id: string;
   procedure_name: string;
-  details: string | null;
-  biopsy: boolean | null;
+  procedure_details: string | null;
+  needs_biopsy: boolean;
+  biopsy_details: string | null;
   created_at: string;
 };
 
 type Medication = {
   id: string;
-  medication_name: string;
+  patient_id: string;
+  name: string;
   dose: string | null;
   frequency: string | null;
   duration: string | null;
-  instructions: string | null;
+  notes: string | null;
   created_at: string;
 };
 
 type Lab = {
   id: string;
+  patient_id: string;
   test_name: string;
-  result: string | null;
-  unit: string | null;
+  order_date: string | null;
+  result_value: string | null;
+  units: string | null;
   reference_range: string | null;
   notes: string | null;
   created_at: string;
@@ -71,8 +79,10 @@ type Lab = {
 
 type Referral = {
   id: string;
+  patient_id: string;
   referral_to: string;
   reason: string | null;
+  appointment_date: string | null;
   notes: string | null;
   created_at: string;
 };
@@ -86,7 +96,7 @@ const tabs: {
   {
     id: "progress",
     title: "Progress Notes",
-    description: "Doctor notes & photos",
+    description: "Doctor notes",
     icon: "📝",
   },
   {
@@ -151,11 +161,13 @@ export default function PatientPage() {
   const [oxygen, setOxygen] = useState("");
   const [respiratoryRate, setRespiratoryRate] = useState("");
   const [vitalWeight, setVitalWeight] = useState("");
+  const [vitalNotes, setVitalNotes] = useState("");
   const [savingVitals, setSavingVitals] = useState(false);
 
   const [procedureName, setProcedureName] = useState("");
   const [procedureDetails, setProcedureDetails] = useState("");
   const [biopsy, setBiopsy] = useState<boolean | null>(null);
+  const [biopsyDetails, setBiopsyDetails] = useState("");
   const [savingProcedure, setSavingProcedure] = useState(false);
 
   const [medicationName, setMedicationName] = useState("");
@@ -166,6 +178,7 @@ export default function PatientPage() {
   const [savingMedication, setSavingMedication] = useState(false);
 
   const [testName, setTestName] = useState("");
+  const [orderDate, setOrderDate] = useState("");
   const [result, setResult] = useState("");
   const [unit, setUnit] = useState("");
   const [referenceRange, setReferenceRange] = useState("");
@@ -174,6 +187,7 @@ export default function PatientPage() {
 
   const [referralTo, setReferralTo] = useState("");
   const [referralReason, setReferralReason] = useState("");
+  const [appointmentDate, setAppointmentDate] = useState("");
   const [referralNotes, setReferralNotes] = useState("");
   const [savingReferral, setSavingReferral] = useState(false);
 
@@ -189,7 +203,7 @@ export default function PatientPage() {
     setLoading(true);
     setError("");
 
-    const { data: patientData, error: patientError } = await supabase
+    const { data, error: patientError } = await supabase
       .from("clinic_patients")
       .select(
         "id,name,file_number,phone,date_of_birth,national_id,height,weight"
@@ -204,7 +218,7 @@ export default function PatientPage() {
       return;
     }
 
-    setPatient(patientData);
+    setPatient(data as Patient);
 
     await Promise.all([
       loadNotes(),
@@ -220,74 +234,102 @@ export default function PatientPage() {
 
   async function loadNotes() {
     const { data, error } = await supabase
-      .from("patient_notes")
-      .select("*")
+      .from("clinic_progress_notes")
+      .select("id,patient_id,note,created_at")
       .eq("patient_id", patientId)
       .order("created_at", { ascending: false });
 
-    if (!error) {
-      setNotes(data || []);
+    if (error) {
+      console.error("Notes error:", error);
+      return;
     }
+
+    setNotes((data || []) as Note[]);
   }
 
   async function loadVitals() {
     const { data, error } = await supabase
-      .from("patient_vitals")
-      .select("*")
+      .from("clinic_patient_vitals")
+      .select(
+        "id,patient_id,recorded_at,temperature_c,systolic_bp,diastolic_bp,heart_rate_bpm,oxygen_sat_percent,respiratory_rate,weight_kg,notes"
+      )
       .eq("patient_id", patientId)
-      .order("created_at", { ascending: false });
+      .order("recorded_at", { ascending: false });
 
-    if (!error) {
-      setVitals(data || []);
+    if (error) {
+      console.error("Vitals error:", error);
+      return;
     }
+
+    setVitals((data || []) as Vital[]);
   }
 
   async function loadProcedures() {
     const { data, error } = await supabase
-      .from("patient_procedures")
-      .select("*")
+      .from("clinic_procedures")
+      .select(
+        "id,patient_id,created_at,procedure_name,procedure_details,needs_biopsy,biopsy_details"
+      )
       .eq("patient_id", patientId)
       .order("created_at", { ascending: false });
 
-    if (!error) {
-      setProcedures(data || []);
+    if (error) {
+      console.error("Procedures error:", error);
+      return;
     }
+
+    setProcedures((data || []) as Procedure[]);
   }
 
   async function loadMedications() {
     const { data, error } = await supabase
-      .from("patient_medications")
-      .select("*")
+      .from("clinic_medications")
+      .select(
+        "id,patient_id,created_at,name,dose,frequency,duration,notes"
+      )
       .eq("patient_id", patientId)
       .order("created_at", { ascending: false });
 
-    if (!error) {
-      setMedications(data || []);
+    if (error) {
+      console.error("Medications error:", error);
+      return;
     }
+
+    setMedications((data || []) as Medication[]);
   }
 
   async function loadLabs() {
     const { data, error } = await supabase
-      .from("patient_labs")
-      .select("*")
+      .from("clinic_labs")
+      .select(
+        "id,patient_id,created_at,test_name,order_date,result_value,units,reference_range,notes"
+      )
       .eq("patient_id", patientId)
       .order("created_at", { ascending: false });
 
-    if (!error) {
-      setLabs(data || []);
+    if (error) {
+      console.error("Labs error:", error);
+      return;
     }
+
+    setLabs((data || []) as Lab[]);
   }
 
   async function loadReferrals() {
     const { data, error } = await supabase
-      .from("patient_referrals")
-      .select("*")
+      .from("clinic_referrals")
+      .select(
+        "id,patient_id,created_at,referral_to,reason,appointment_date,notes"
+      )
       .eq("patient_id", patientId)
       .order("created_at", { ascending: false });
 
-    if (!error) {
-      setReferrals(data || []);
+    if (error) {
+      console.error("Referrals error:", error);
+      return;
     }
+
+    setReferrals((data || []) as Referral[]);
   }
 
   async function saveNote() {
@@ -298,12 +340,15 @@ export default function PatientPage() {
 
     setSavingNote(true);
 
-    const { error } = await supabase.from("patient_notes").insert({
-      patient_id: patientId,
-      note: noteText.trim(),
-    });
+    const { error } = await supabase
+      .from("clinic_progress_notes")
+      .insert({
+        patient_id: patientId,
+        note: noteText.trim(),
+      });
 
     if (error) {
+      console.error(error);
       alert(error.message);
       setSavingNote(false);
       return;
@@ -316,22 +361,39 @@ export default function PatientPage() {
   }
 
   async function saveVitals() {
+    if (
+      !temperature &&
+      !systolicBP &&
+      !diastolicBP &&
+      !heartRate &&
+      !oxygen &&
+      !respiratoryRate &&
+      !vitalWeight
+    ) {
+      alert("Please enter at least one vital sign.");
+      return;
+    }
+
     setSavingVitals(true);
 
-    const { error } = await supabase.from("patient_vitals").insert({
-      patient_id: patientId,
-      temperature: temperature ? Number(temperature) : null,
-      systolic_bp: systolicBP ? Number(systolicBP) : null,
-      diastolic_bp: diastolicBP ? Number(diastolicBP) : null,
-      heart_rate: heartRate ? Number(heartRate) : null,
-      oxygen_saturation: oxygen ? Number(oxygen) : null,
-      respiratory_rate: respiratoryRate
-        ? Number(respiratoryRate)
-        : null,
-      weight: vitalWeight ? Number(vitalWeight) : null,
-    });
+    const { error } = await supabase
+      .from("clinic_patient_vitals")
+      .insert({
+        patient_id: patientId,
+        temperature_c: temperature ? Number(temperature) : null,
+        systolic_bp: systolicBP ? Number(systolicBP) : null,
+        diastolic_bp: diastolicBP ? Number(diastolicBP) : null,
+        heart_rate_bpm: heartRate ? Number(heartRate) : null,
+        oxygen_sat_percent: oxygen ? Number(oxygen) : null,
+        respiratory_rate: respiratoryRate
+          ? Number(respiratoryRate)
+          : null,
+        weight_kg: vitalWeight ? Number(vitalWeight) : null,
+        notes: vitalNotes.trim() || null,
+      });
 
     if (error) {
+      console.error(error);
       alert(error.message);
       setSavingVitals(false);
       return;
@@ -344,6 +406,7 @@ export default function PatientPage() {
     setOxygen("");
     setRespiratoryRate("");
     setVitalWeight("");
+    setVitalNotes("");
 
     await loadVitals();
 
@@ -358,14 +421,19 @@ export default function PatientPage() {
 
     setSavingProcedure(true);
 
-    const { error } = await supabase.from("patient_procedures").insert({
-      patient_id: patientId,
-      procedure_name: procedureName.trim(),
-      details: procedureDetails.trim() || null,
-      biopsy,
-    });
+    const { error } = await supabase
+      .from("clinic_procedures")
+      .insert({
+        patient_id: patientId,
+        procedure_name: procedureName.trim(),
+        procedure_details: procedureDetails.trim() || null,
+        needs_biopsy: biopsy ?? false,
+        biopsy_details:
+          biopsy === true ? biopsyDetails.trim() || null : null,
+      });
 
     if (error) {
+      console.error(error);
       alert(error.message);
       setSavingProcedure(false);
       return;
@@ -374,6 +442,7 @@ export default function PatientPage() {
     setProcedureName("");
     setProcedureDetails("");
     setBiopsy(null);
+    setBiopsyDetails("");
 
     await loadProcedures();
 
@@ -388,16 +457,19 @@ export default function PatientPage() {
 
     setSavingMedication(true);
 
-    const { error } = await supabase.from("patient_medications").insert({
-      patient_id: patientId,
-      medication_name: medicationName.trim(),
-      dose: dose.trim() || null,
-      frequency: frequency.trim() || null,
-      duration: duration.trim() || null,
-      instructions: instructions.trim() || null,
-    });
+    const { error } = await supabase
+      .from("clinic_medications")
+      .insert({
+        patient_id: patientId,
+        name: medicationName.trim(),
+        dose: dose.trim() || null,
+        frequency: frequency.trim() || null,
+        duration: duration.trim() || null,
+        notes: instructions.trim() || null,
+      });
 
     if (error) {
+      console.error(error);
       alert(error.message);
       setSavingMedication(false);
       return;
@@ -422,22 +494,27 @@ export default function PatientPage() {
 
     setSavingLab(true);
 
-    const { error } = await supabase.from("patient_labs").insert({
-      patient_id: patientId,
-      test_name: testName.trim(),
-      result: result.trim() || null,
-      unit: unit.trim() || null,
-      reference_range: referenceRange.trim() || null,
-      notes: labNotes.trim() || null,
-    });
+    const { error } = await supabase
+      .from("clinic_labs")
+      .insert({
+        patient_id: patientId,
+        test_name: testName.trim(),
+        order_date: orderDate || null,
+        result_value: result.trim() || null,
+        units: unit.trim() || null,
+        reference_range: referenceRange.trim() || null,
+        notes: labNotes.trim() || null,
+      });
 
     if (error) {
+      console.error(error);
       alert(error.message);
       setSavingLab(false);
       return;
     }
 
     setTestName("");
+    setOrderDate("");
     setResult("");
     setUnit("");
     setReferenceRange("");
@@ -456,14 +533,18 @@ export default function PatientPage() {
 
     setSavingReferral(true);
 
-    const { error } = await supabase.from("patient_referrals").insert({
-      patient_id: patientId,
-      referral_to: referralTo.trim(),
-      reason: referralReason.trim() || null,
-      notes: referralNotes.trim() || null,
-    });
+    const { error } = await supabase
+      .from("clinic_referrals")
+      .insert({
+        patient_id: patientId,
+        referral_to: referralTo.trim(),
+        reason: referralReason.trim() || null,
+        appointment_date: appointmentDate || null,
+        notes: referralNotes.trim() || null,
+      });
 
     if (error) {
+      console.error(error);
       alert(error.message);
       setSavingReferral(false);
       return;
@@ -471,6 +552,7 @@ export default function PatientPage() {
 
     setReferralTo("");
     setReferralReason("");
+    setAppointmentDate("");
     setReferralNotes("");
 
     await loadReferrals();
@@ -501,6 +583,7 @@ export default function PatientPage() {
           </p>
 
           <button
+            type="button"
             onClick={() => router.push("/")}
             className="mt-4 rounded-xl bg-teal-600 px-5 py-3 text-sm font-semibold text-white"
           >
@@ -536,7 +619,7 @@ export default function PatientPage() {
           Back to Patients
         </button>
 
-        {/* Patient Header */}
+        {/* PATIENT HEADER */}
 
         <section className="mb-4 overflow-hidden rounded-[28px] border border-white bg-white shadow-[0_8px_30px_rgba(15,118,110,0.08)]">
           <div className="bg-gradient-to-br from-teal-600 via-teal-600 to-cyan-600 p-5 text-white sm:p-6">
@@ -634,7 +717,7 @@ export default function PatientPage() {
           </div>
         </section>
 
-        {/* Main Clinical Area */}
+        {/* CLINICAL AREA */}
 
         <section className="grid gap-4 lg:grid-cols-[230px_minmax(0,1fr)]">
           <aside>
@@ -705,7 +788,7 @@ export default function PatientPage() {
               </div>
             </div>
 
-            {/* ================= NOTES ================= */}
+            {/* NOTES */}
 
             {tab === "progress" && (
               <div className="p-5 sm:p-6">
@@ -751,7 +834,7 @@ export default function PatientPage() {
                       <NoteCard
                         key={item.id}
                         date={formatDateTime(item.created_at)}
-                        note={item.note}
+                        note={item.note || ""}
                       />
                     ))}
                   </div>
@@ -759,7 +842,7 @@ export default function PatientPage() {
               </div>
             )}
 
-            {/* ================= VITALS ================= */}
+            {/* VITALS */}
 
             {tab === "vitals" && (
               <div className="p-5 sm:p-6">
@@ -814,13 +897,22 @@ export default function PatientPage() {
                   />
                 </div>
 
+                <TextareaField
+                  label="Notes"
+                  placeholder="Additional vital signs notes..."
+                  value={vitalNotes}
+                  onChange={setVitalNotes}
+                />
+
                 <button
                   type="button"
                   onClick={saveVitals}
                   disabled={savingVitals}
                   className="mt-4 flex h-11 w-full items-center justify-center rounded-xl bg-teal-600 text-sm font-semibold text-white transition hover:bg-teal-700 disabled:opacity-50"
                 >
-                  {savingVitals ? "Saving..." : "+ Save Vital Signs"}
+                  {savingVitals
+                    ? "Saving..."
+                    : "+ Save Vital Signs"}
                 </button>
 
                 <div className="mt-6">
@@ -839,29 +931,57 @@ export default function PatientPage() {
                         className="rounded-2xl border border-slate-100 bg-slate-50 p-4"
                       >
                         <p className="mb-3 text-[10px] font-semibold text-teal-600">
-                          {formatDateTime(v.created_at)}
+                          {formatDateTime(v.recorded_at)}
                         </p>
 
                         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                          <MiniValue label="Temp" value={v.temperature} unit="°C" />
+                          <MiniValue
+                            label="Temp"
+                            value={v.temperature_c}
+                            unit="°C"
+                          />
+
                           <MiniValue
                             label="BP"
                             value={
-                              v.systolic_bp && v.diastolic_bp
+                              v.systolic_bp !== null &&
+                              v.diastolic_bp !== null
                                 ? `${v.systolic_bp}/${v.diastolic_bp}`
                                 : null
                             }
                             unit="mmHg"
                           />
-                          <MiniValue label="Heart" value={v.heart_rate} unit="bpm" />
-                          <MiniValue label="O₂" value={v.oxygen_saturation} unit="%" />
+
+                          <MiniValue
+                            label="Heart"
+                            value={v.heart_rate_bpm}
+                            unit="bpm"
+                          />
+
+                          <MiniValue
+                            label="O₂"
+                            value={v.oxygen_sat_percent}
+                            unit="%"
+                          />
+
                           <MiniValue
                             label="Resp"
                             value={v.respiratory_rate}
                             unit="/min"
                           />
-                          <MiniValue label="Weight" value={v.weight} unit="kg" />
+
+                          <MiniValue
+                            label="Weight"
+                            value={v.weight_kg}
+                            unit="kg"
+                          />
                         </div>
+
+                        {v.notes && (
+                          <p className="mt-3 whitespace-pre-wrap text-sm text-slate-600">
+                            {v.notes}
+                          </p>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -869,7 +989,7 @@ export default function PatientPage() {
               </div>
             )}
 
-            {/* ================= PROCEDURES ================= */}
+            {/* PROCEDURES */}
 
             {tab === "procedure" && (
               <div className="p-5 sm:p-6">
@@ -910,13 +1030,24 @@ export default function PatientPage() {
                     </div>
                   </div>
 
+                  {biopsy === true && (
+                    <TextareaField
+                      label="Biopsy Details"
+                      placeholder="Describe biopsy requirements..."
+                      value={biopsyDetails}
+                      onChange={setBiopsyDetails}
+                    />
+                  )}
+
                   <button
                     type="button"
                     onClick={saveProcedure}
                     disabled={savingProcedure}
                     className="h-11 w-full rounded-xl bg-teal-600 text-sm font-semibold text-white transition hover:bg-teal-700 disabled:opacity-50"
                   >
-                    {savingProcedure ? "Saving..." : "Save Procedure"}
+                    {savingProcedure
+                      ? "Saving..."
+                      : "Save Procedure"}
                   </button>
                 </div>
 
@@ -945,17 +1076,27 @@ export default function PatientPage() {
                           </p>
                         </div>
 
-                        {p.biopsy !== null && (
-                          <span className="text-xs font-semibold text-teal-600">
-                            Biopsy: {p.biopsy ? "Yes" : "No"}
-                          </span>
-                        )}
+                        <span className="text-xs font-semibold text-teal-600">
+                          Biopsy: {p.needs_biopsy ? "Yes" : "No"}
+                        </span>
                       </div>
 
-                      {p.details && (
-                        <p className="mt-3 text-sm leading-6 text-slate-600">
-                          {p.details}
+                      {p.procedure_details && (
+                        <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-600">
+                          {p.procedure_details}
                         </p>
+                      )}
+
+                      {p.biopsy_details && (
+                        <div className="mt-3 rounded-xl bg-white p-3">
+                          <p className="text-[10px] font-bold uppercase tracking-wide text-teal-600">
+                            Biopsy Details
+                          </p>
+
+                          <p className="mt-1 whitespace-pre-wrap text-sm text-slate-600">
+                            {p.biopsy_details}
+                          </p>
+                        </div>
                       )}
                     </div>
                   ))}
@@ -963,7 +1104,7 @@ export default function PatientPage() {
               </div>
             )}
 
-            {/* ================= MEDICATION ================= */}
+            {/* MEDICATIONS */}
 
             {tab === "medication" && (
               <div className="p-5 sm:p-6">
@@ -1032,7 +1173,7 @@ export default function PatientPage() {
                       className="rounded-2xl border border-slate-100 bg-slate-50 p-4"
                     >
                       <p className="font-bold">
-                        {m.medication_name}
+                        {m.name}
                       </p>
 
                       <p className="mt-1 text-xs text-teal-600">
@@ -1040,18 +1181,22 @@ export default function PatientPage() {
                         {m.duration || "-"}
                       </p>
 
-                      {m.instructions && (
-                        <p className="mt-2 text-sm text-slate-600">
-                          {m.instructions}
+                      {m.notes && (
+                        <p className="mt-2 whitespace-pre-wrap text-sm text-slate-600">
+                          {m.notes}
                         </p>
                       )}
+
+                      <p className="mt-2 text-[10px] text-slate-400">
+                        {formatDateTime(m.created_at)}
+                      </p>
                     </div>
                   ))}
                 </div>
               </div>
             )}
 
-            {/* ================= LABS ================= */}
+            {/* LABS */}
 
             {tab === "labs" && (
               <div className="p-5 sm:p-6">
@@ -1064,20 +1209,33 @@ export default function PatientPage() {
                   />
 
                   <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                        Order Date
+                      </label>
+
+                      <input
+                        type="date"
+                        value={orderDate}
+                        onChange={(e) => setOrderDate(e.target.value)}
+                        className="mt-2 h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-800 outline-none focus:border-teal-400 focus:bg-white focus:ring-4 focus:ring-teal-500/10"
+                      />
+                    </div>
+
                     <Field
                       label="Result"
                       placeholder="Result"
                       value={result}
                       onChange={setResult}
                     />
-
-                    <Field
-                      label="Unit"
-                      placeholder="Unit"
-                      value={unit}
-                      onChange={setUnit}
-                    />
                   </div>
+
+                  <Field
+                    label="Unit"
+                    placeholder="Unit"
+                    value={unit}
+                    onChange={setUnit}
+                  />
 
                   <Field
                     label="Reference Range"
@@ -1118,7 +1276,17 @@ export default function PatientPage() {
                       className="rounded-2xl border border-slate-100 bg-slate-50 p-4"
                     >
                       <div className="flex justify-between gap-3">
-                        <p className="font-bold">{lab.test_name}</p>
+                        <div>
+                          <p className="font-bold">
+                            {lab.test_name}
+                          </p>
+
+                          {lab.order_date && (
+                            <p className="mt-1 text-xs text-teal-600">
+                              Ordered: {formatDate(lab.order_date)}
+                            </p>
+                          )}
+                        </div>
 
                         <span className="text-xs text-slate-400">
                           {formatDateTime(lab.created_at)}
@@ -1127,8 +1295,8 @@ export default function PatientPage() {
 
                       <p className="mt-2 text-sm">
                         Result:{" "}
-                        <strong>{lab.result || "-"}</strong>{" "}
-                        {lab.unit || ""}
+                        <strong>{lab.result_value || "-"}</strong>{" "}
+                        {lab.units || ""}
                       </p>
 
                       <p className="mt-1 text-xs text-slate-500">
@@ -1136,7 +1304,7 @@ export default function PatientPage() {
                       </p>
 
                       {lab.notes && (
-                        <p className="mt-2 text-sm text-slate-600">
+                        <p className="mt-2 whitespace-pre-wrap text-sm text-slate-600">
                           {lab.notes}
                         </p>
                       )}
@@ -1146,7 +1314,7 @@ export default function PatientPage() {
               </div>
             )}
 
-            {/* ================= REFERRALS ================= */}
+            {/* REFERRALS */}
 
             {tab === "referral" && (
               <div className="p-5 sm:p-6">
@@ -1165,6 +1333,21 @@ export default function PatientPage() {
                     onChange={setReferralReason}
                   />
 
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                      Appointment Date
+                    </label>
+
+                    <input
+                      type="date"
+                      value={appointmentDate}
+                      onChange={(e) =>
+                        setAppointmentDate(e.target.value)
+                      }
+                      className="mt-2 h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-800 outline-none focus:border-teal-400 focus:bg-white focus:ring-4 focus:ring-teal-500/10"
+                    />
+                  </div>
+
                   <TextareaField
                     label="Referral Notes"
                     placeholder="Write referral details..."
@@ -1178,7 +1361,9 @@ export default function PatientPage() {
                     disabled={savingReferral}
                     className="h-11 w-full rounded-xl bg-teal-600 text-sm font-semibold text-white transition hover:bg-teal-700 disabled:opacity-50"
                   >
-                    {savingReferral ? "Saving..." : "Save Referral"}
+                    {savingReferral
+                      ? "Saving..."
+                      : "Save Referral"}
                   </button>
                 </div>
 
@@ -1204,6 +1389,13 @@ export default function PatientPage() {
                         {formatDateTime(r.created_at)}
                       </p>
 
+                      {r.appointment_date && (
+                        <p className="mt-2 text-sm">
+                          <strong>Appointment:</strong>{" "}
+                          {formatDate(r.appointment_date)}
+                        </p>
+                      )}
+
                       {r.reason && (
                         <p className="mt-2 text-sm">
                           <strong>Reason:</strong> {r.reason}
@@ -1211,7 +1403,7 @@ export default function PatientPage() {
                       )}
 
                       {r.notes && (
-                        <p className="mt-2 text-sm text-slate-600">
+                        <p className="mt-2 whitespace-pre-wrap text-sm text-slate-600">
                           {r.notes}
                         </p>
                       )}
@@ -1343,7 +1535,7 @@ function ChoiceButton({
       className={`rounded-2xl border p-4 text-sm font-semibold transition ${
         active
           ? "border-teal-300 bg-teal-50 text-teal-700"
-          : "border-slate-200 bg-white text-slate-600"
+          : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
       }`}
     >
       {children}
